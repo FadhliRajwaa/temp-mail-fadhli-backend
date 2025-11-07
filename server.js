@@ -7,6 +7,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import multer from 'multer';
+import { simpleParser } from 'mailparser';
 import connectDatabase from './config/database.js';
 import Email from './models/Email.js';
 
@@ -308,19 +309,37 @@ app.post('/api/sendgrid/webhook', upload.none(), async (req, res) => {
     // Debug: Log all available fields first
     console.log('Available fields:', Object.keys(req.body));
     
-    const { 
-      to,           // recipient email
-      from,         // sender email
-      subject,      // email subject
-      text,         // plain text body
-      html,         // html body
-    } = req.body;
+    let to, from, subject, bodyText = '', bodyHtml = '';
     
-    // SendGrid bisa kirim dengan nama field berbeda
-    const bodyText = text || req.body['body-plain'] || req.body.plain || '';
-    const bodyHtml = html || req.body['body-html'] || req.body.html || '';
+    // Check if SendGrid sent raw MIME message
+    if (req.body.email) {
+      console.log('Parsing raw MIME message...');
+      try {
+        // Parse raw MIME message
+        const parsed = await simpleParser(req.body.email);
+        to = parsed.to?.text || req.body.to;
+        from = parsed.from?.text || req.body.from;
+        subject = parsed.subject || req.body.subject;
+        bodyText = parsed.text || '';
+        bodyHtml = parsed.html || '';
+        console.log('MIME parsed successfully');
+      } catch (parseError) {
+        console.error('MIME parsing failed:', parseError);
+        // Fallback to direct fields
+        to = req.body.to;
+        from = req.body.from;
+        subject = req.body.subject;
+      }
+    } else {
+      // Use direct fields if no raw MIME
+      to = req.body.to;
+      from = req.body.from;
+      subject = req.body.subject;
+      bodyText = req.body.text || req.body['body-plain'] || req.body.plain || '';
+      bodyHtml = req.body.html || req.body['body-html'] || '';
+    }
 
-    // Debug: Log raw data
+    // Debug: Log parsed data
     console.log('Raw TO field:', to);
     console.log('Raw FROM field:', from);
     console.log('Raw SUBJECT:', subject);
