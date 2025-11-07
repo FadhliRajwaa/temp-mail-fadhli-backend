@@ -305,6 +305,9 @@ app.post('/api/sendgrid/webhook', upload.none(), async (req, res) => {
   try {
     console.log('Email received from SendGrid');
     
+    // Debug: Log all available fields first
+    console.log('Available fields:', Object.keys(req.body));
+    
     const { 
       to,           // recipient email
       from,         // sender email
@@ -312,11 +315,17 @@ app.post('/api/sendgrid/webhook', upload.none(), async (req, res) => {
       text,         // plain text body
       html,         // html body
     } = req.body;
+    
+    // SendGrid bisa kirim dengan nama field berbeda
+    const bodyText = text || req.body['body-plain'] || req.body.plain || '';
+    const bodyHtml = html || req.body['body-html'] || req.body.html || '';
 
     // Debug: Log raw data
     console.log('Raw TO field:', to);
     console.log('Raw FROM field:', from);
     console.log('Raw SUBJECT:', subject);
+    console.log('Raw TEXT field:', bodyText ? bodyText.substring(0, 100) + '...' : 'EMPTY');
+    console.log('Raw HTML field:', bodyHtml ? bodyHtml.substring(0, 100) + '...' : 'EMPTY');
 
     // Parse recipient email - handle multiple formats
     let recipientEmail = '';
@@ -343,8 +352,8 @@ app.post('/api/sendgrid/webhook', upload.none(), async (req, res) => {
       to_address: recipientEmail,
       from_address: from || 'Unknown Sender',
       subject: subject || '(No Subject)',
-      body_text: text || '',
-      body_html: html || '',
+      body_text: bodyText,
+      body_html: bodyHtml,
       received_at: new Date()
     });
 
@@ -358,6 +367,8 @@ app.post('/api/sendgrid/webhook', upload.none(), async (req, res) => {
     console.log('   From:', from);
     console.log('   To:', recipientEmail);
     console.log('   Subject:', subject);
+    console.log('   Body Text Length:', bodyText.length);
+    console.log('   Body HTML Length:', bodyHtml.length);
     
     // SendGrid expects 200 OK
     res.status(200).send('OK');
