@@ -338,40 +338,26 @@ app.post('/api/sendgrid/webhook', upload.none(), async (req, res) => {
     
     console.log('Email accepted for:', recipientEmail);
 
-    // Generate unique ID
-    const emailId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    // Hitung expiry time (15 menit dari sekarang)
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
-
-    // Simpan ke MongoDB
+    // Simpan ke MongoDB (match schema field names)
     const emailDoc = await Email.create({
-      id: emailId,
-      to: recipientEmail,
-      from: from || 'Unknown Sender',
+      to_address: recipientEmail,
+      from_address: from || 'Unknown Sender',
       subject: subject || '(No Subject)',
-      bodyText: text || '',
-      bodyHtml: html || '',
-      receivedAt: new Date(),
-      expiresAt: expiresAt
+      body_text: text || '',
+      body_html: html || '',
+      received_at: new Date()
     });
+
+    // Convert to client format using model method
+    const clientEmail = emailDoc.toClientFormat();
 
     // Broadcast via Socket.io ke frontend
-    io.emit('newEmail', {
-      id: emailDoc.id,
-      to: emailDoc.to,
-      from: emailDoc.from,
-      subject: emailDoc.subject,
-      bodyText: emailDoc.bodyText,
-      bodyHtml: emailDoc.bodyHtml,
-      receivedAt: emailDoc.receivedAt,
-      expiresAt: emailDoc.expiresAt
-    });
+    io.emit('newEmail', clientEmail);
 
-    console.log(`✅ Email saved and broadcasted: ${emailId}`);
-    console.log(`   From: ${from}`);
-    console.log(`   To: ${recipientEmail}`);
-    console.log(`   Subject: ${subject}`);
+    console.log('Email saved and broadcasted successfully');
+    console.log('   From:', from);
+    console.log('   To:', recipientEmail);
+    console.log('   Subject:', subject);
     
     // SendGrid expects 200 OK
     res.status(200).send('OK');
