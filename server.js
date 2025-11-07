@@ -303,7 +303,7 @@ app.get('/api/stats', async (req, res) => {
  */
 app.post('/api/sendgrid/webhook', express.urlencoded({ extended: false }), async (req, res) => {
   try {
-    console.log('📧 Email received from SendGrid');
+    console.log('Email received from SendGrid');
     
     const { 
       to,           // recipient email
@@ -313,14 +313,26 @@ app.post('/api/sendgrid/webhook', express.urlencoded({ extended: false }), async
       html,         // html body
     } = req.body;
 
-    // Parse recipient email (remove brackets if present)
-    const recipientEmail = to ? to.split('<')[1]?.replace('>', '') || to : '';
+    // Debug: Log raw data
+    console.log('Raw TO field:', to);
+    console.log('Raw FROM field:', from);
+    console.log('Raw SUBJECT:', subject);
+
+    // Parse recipient email - handle multiple formats
+    let recipientEmail = '';
+    if (to) {
+      // Remove brackets if present: "Name <email@domain.com>" -> "email@domain.com"
+      const match = to.match(/<(.+?)>/);
+      recipientEmail = match ? match[1] : to.trim();
+    }
+    
+    console.log('Parsed recipient email:', recipientEmail);
     
     // Pastikan email untuk domain kita (accept both old and new domain)
     const rootDomain = 'fadhlirajwaa.my.id'; // Accept any subdomain
     
-    if (!recipientEmail.includes(rootDomain)) {
-      console.log(`Email bukan untuk domain kita (${recipientEmail}), skip`);
+    if (!recipientEmail || !recipientEmail.includes(rootDomain)) {
+      console.log('Email rejected - not for our domain:', recipientEmail);
       return res.status(200).send('OK');
     }
     
