@@ -299,9 +299,9 @@ app.get('/api/stats', async (req, res) => {
 /**
  * POST /api/sendgrid/webhook
  * SendGrid Inbound Parse Webhook
- * Handle incoming emails dari SendGrid
+ * Handle incoming emails dari SendGrid (multipart/form-data)
  */
-app.post('/api/sendgrid/webhook', express.urlencoded({ extended: false }), async (req, res) => {
+app.post('/api/sendgrid/webhook', upload.none(), async (req, res) => {
   try {
     console.log('Email received from SendGrid');
     
