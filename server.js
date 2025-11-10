@@ -379,15 +379,20 @@ app.post('/api/sendgrid/webhook', upload.none(), async (req, res) => {
     // Convert to client format using model method
     const clientEmail = emailDoc.toClientFormat();
 
-    // Broadcast via Socket.io ke frontend
-    io.emit('newEmail', clientEmail);
+    // Normalize recipient email for room matching
+    const normalizedRecipient = recipientEmail.toLowerCase().trim();
 
+    // Broadcast via Socket.io to specific room (same as Mailgun)
+    io.to(normalizedRecipient).emit('new-email', clientEmail);
+    
     console.log('Email saved and broadcasted successfully');
     console.log('   From:', from);
     console.log('   To:', recipientEmail);
     console.log('   Subject:', subject);
     console.log('   Body Text Length:', bodyText.length);
     console.log('   Body HTML Length:', bodyHtml.length);
+    console.log(`🚀 Email broadcasted to room: ${normalizedRecipient}`);
+    console.log(`👥 Active listeners: ${io.sockets.adapter.rooms.get(normalizedRecipient)?.size || 0}`);
     
     // SendGrid expects 200 OK
     res.status(200).send('OK');
